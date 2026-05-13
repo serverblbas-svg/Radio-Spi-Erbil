@@ -2,30 +2,38 @@
 <html lang="ku">
 <head>
     <meta charset="UTF-8">
-    <title>QURAN LIVE - NO ADS TEST</title>
+    <title>QURAN LIVE - BRAVE AD-BLOCK 🌙</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
         
-        /* شاشەی ڤیدیۆی یوتیوب */
-        #player {
+        /* پلەیەری یوتیوب بە شاشەی کامل */
+        .video-wrapper {
             position: absolute;
             top: 0; left: 0;
             width: 100vw; height: 100vh;
-            pointer-events: none; /* بۆ ئەوەی ڕیکلامەکان کلیک نەکرێن */
+            z-index: 1;
         }
 
-        /* لۆگۆ لەسەر شاشە */
+        iframe {
+            width: 100%; height: 100%;
+            border: none;
+            pointer-events: none; /* بۆ ئەوەی کەس نەتوانێت دەستکاری ڤیدیۆکە بکات لە کاتی پەخش */
+        }
+
+        /* لۆگۆی کەناڵ بە بڕینی ڕەنگی سەوز */
         #logoCanvas {
             position: absolute;
             top: 30px;
             left: 30px;
-            width: 150px;
+            width: 160px; /* دەتوانیت قەبارەکەی لێرە بگۆڕیت */
             z-index: 100;
             pointer-events: none;
+            filter: drop-shadow(0 0 8px rgba(0,0,0,0.5));
         }
 
         #hiddenLogoVideo { display: none; }
 
+        /* چینێکی پارێزەر لەسەر ڤیدیۆکە */
         .overlay {
             position: absolute;
             top: 0; left: 0;
@@ -38,75 +46,57 @@
 <body>
 
     <div class="overlay"></div>
-    <div id="player"></div>
+
+    <div class="video-wrapper">
+        <iframe 
+            src="https://www.youtube.com/embed/0tOZdUgmv_I?autoplay=1&controls=0&mute=0&rel=0&showinfo=0&modestbranding=1&loop=1&playlist=0tOZdUgmv_I" 
+            allow="autoplay; encrypted-media" 
+            allowfullscreen>
+        </iframe>
+    </div>
 
     <canvas id="logoCanvas"></canvas>
-    <video id="hiddenLogoVideo" autoplay loop muted playsinline>
+    <video id="hiddenLogoVideo" crossorigin="anonymous" autoplay loop muted playsinline>
         <source src="https://dso5.raed.net:452/files/111dekanquran.mkv" type="video/mp4">
     </video>
 
-    <script>
-        // بارکردنی API یوتیوب
-        var tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        var firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+<script>
+    const logoVideo = document.getElementById('hiddenLogoVideo');
+    const canvas = document.getElementById('logoCanvas');
+    const ctx = canvas.getContext('2d');
 
-        var player;
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player('player', {
-                height: '100%',
-                width: '100%',
-                videoId: '0tOZdUgmv_I', // ئایدی ڤیدیۆی قورئانەکە
-                playerVars: {
-                    'autoplay': 1,
-                    'controls': 0, // شاردنەوەی دوگمەکانی یوتیوب
-                    'rel': 0,
-                    'showinfo': 0,
-                    'modestbranding': 1,
-                    'loop': 1,
-                    'playlist': '0tOZdUgmv_I' // پێویستە بۆ دووبارەبوونەوە
-                },
-                events: {
-                    'onReady': onPlayerReady
+    // لۆژیکی بڕینی ڕەنگی سەوز (Chroma Key)
+    function processChromaKey() {
+        if (!logoVideo.paused && !logoVideo.ended) {
+            ctx.drawImage(logoVideo, 0, 0, canvas.width, canvas.height);
+            let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let length = frame.data.length / 4;
+
+            for (let i = 0; i < length; i++) {
+                let r = frame.data[i * 4 + 0];
+                let g = frame.data[i * 4 + 1];
+                let b = frame.data[i * 4 + 2];
+
+                // بڕینی ڕەنگی سەوز و گۆڕینی بۆ شەفاف
+                if (g > 90 && g > r * 1.2 && g > b * 1.2) {
+                    frame.data[i * 4 + 3] = 0;
                 }
-            });
-        }
-
-        function onPlayerReady(event) {
-            event.target.playVideo();
-            event.target.mute(); // زۆربەی برۆسەرەکان پێویستیان بە بێدەنگییە بۆ ئەوەی ئۆتۆماتیک دەست پێ بکات
-        }
-
-        // لۆژیکی بڕینی ڕەنگی سەوزی لۆگۆکە
-        const logoVideo = document.getElementById('hiddenLogoVideo');
-        const canvas = document.getElementById('logoCanvas');
-        const ctx = canvas.getContext('2d');
-
-        function processChromaKey() {
-            if (!logoVideo.paused && !logoVideo.ended) {
-                ctx.drawImage(logoVideo, 0, 0, canvas.width, canvas.height);
-                let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                let length = frame.data.length / 4;
-
-                for (let i = 0; i < length; i++) {
-                    let r = frame.data[i * 4 + 0];
-                    let g = frame.data[i * 4 + 1];
-                    let b = frame.data[i * 4 + 2];
-                    if (g > 80 && g > r * 1.1 && g > b * 1.1) {
-                        frame.data[i * 4 + 3] = 0;
-                    }
-                }
-                ctx.putImageData(frame, 0, 0);
             }
-            requestAnimationFrame(processChromaKey);
+            ctx.putImageData(frame, 0, 0);
         }
+        requestAnimationFrame(processChromaKey);
+    }
 
-        logoVideo.addEventListener('play', () => {
-            canvas.width = 300; // قەبارەی ڕوونی لۆگۆکە
-            canvas.height = 300;
-            processChromaKey();
-        });
-    </script>
+    logoVideo.addEventListener('play', () => {
+        canvas.width = logoVideo.videoWidth;
+        canvas.height = logoVideo.videoHeight;
+        processChromaKey();
+    });
+
+    // بۆ دڵنیایی لەوەی ڤیدیۆکە خۆی دەستپێدەکات
+    window.onload = () => {
+        logoVideo.play();
+    };
+</script>
 </body>
 </html>

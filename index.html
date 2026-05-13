@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TILIVIZO QURAN PRO 🌙</title>
     <style>
-        :root { --primary: #1b4332; --accent: #d4af37; --bg: #050a08; --text: #f8f9fa; }
+        :root { --primary: #1b4332; --accent: #d4af37; --bg: #050a08; --text: #f8f9fa; --danger: #e63946; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
@@ -14,38 +14,49 @@
 
         .main { flex: 1; display: flex; overflow: hidden; }
 
-        /* Player Area */
         .player-container { flex: 1; background: #000; position: relative; display: flex; align-items: center; justify-content: center; }
         video { width: 100%; height: 100%; }
-        .v-info { position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 8px; border-right: 4px solid var(--accent); }
+        .v-info { position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 8px; border-right: 4px solid var(--accent); z-index: 10; }
 
-        /* Sidebar */
         .sidebar { width: 420px; background: #0a1310; display: flex; flex-direction: column; border-right: 1px solid var(--accent); }
         .upload-area { padding: 15px; background: var(--primary); display: flex; gap: 10px; }
         .btn { flex: 1; background: var(--accent); color: #000; padding: 10px; border-radius: 5px; text-align: center; font-weight: bold; cursor: pointer; font-size: 0.8rem; }
 
         .list-container { flex: 1; overflow-y: auto; padding: 10px; }
+        
         .item { 
-            display: flex; flex-direction: column; padding: 12px; background: rgba(255,255,255,0.05); 
-            border-radius: 8px; margin-bottom: 8px; cursor: pointer; border-right: 3px solid transparent; 
+            display: flex; align-items: center; padding: 12px; background: rgba(255,255,255,0.05); 
+            border-radius: 8px; margin-bottom: 8px; border-right: 3px solid transparent; 
+            position: relative; transition: 0.2s;
         }
+        .item:hover { background: rgba(255,255,255,0.1); }
         .item.active { background: var(--accent); color: #000; border-right-color: #fff; }
-        .item .name { font-weight: bold; font-size: 0.9rem; margin-bottom: 5px; }
-        .item .time-info { font-size: 0.75rem; opacity: 0.8; display: flex; justify-content: space-between; }
+        
+        .item-content { flex: 1; cursor: pointer; } /* کلیک لێرە ڤیدیۆ ناگۆڕێت بە ئاسانی */
+        
+        .item .name { font-weight: bold; font-size: 0.85rem; margin-bottom: 5px; width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .item .time-info { font-size: 0.7rem; opacity: 0.8; display: flex; justify-content: space-between; }
 
-        .empty-msg { text-align: center; margin-top: 50px; opacity: 0.5; }
+        .del-btn { 
+            background: var(--danger); color: white; border: none; padding: 5px 10px; 
+            border-radius: 4px; cursor: pointer; font-size: 0.7rem; margin-right: 10px;
+            opacity: 0.6; transition: 0.3s;
+        }
+        .del-btn:hover { opacity: 1; transform: scale(1.1); }
+
+        .empty-msg { text-align: center; margin-top: 50px; opacity: 0.5; font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="font-weight: bold;">پەخشی خەتمی قورئان 📖</div>
+    <div style="font-weight: bold;">پەخشی قورئانی پیرۆز 📖 <span style="font-size: 0.7rem; color: #aaa;">(بۆ گۆڕین دوو کلیک بکە)</span></div>
     <div class="clock" id="liveClock">00:00:00</div>
 </header>
 
 <div class="main">
     <div class="player-container">
-        <div class="v-info" id="currentInfo">ئامادەیە بۆ بارکردن...</div>
+        <div class="v-info" id="currentInfo">تکایە فایلەکان بار بکە...</div>
         <video id="videoPlayer" controls autoplay></video>
     </div>
 
@@ -58,7 +69,7 @@
         </div>
         
         <div class="list-container" id="videoList">
-            <div class="empty-msg">تکایە فایلەکان هەڵبژێرە</div>
+            <div class="empty-msg">هیچ ڤیدیۆیەک لە لیستدا نییە</div>
         </div>
     </div>
 </div>
@@ -70,37 +81,37 @@
     const currentInfo = document.getElementById('currentInfo');
     
     let playlist = [];
+    let currentIndex = -1;
 
-    // نوێکردنەوەی کاتژمێری سەرەوە
     setInterval(() => {
         const now = new Date();
         liveClock.innerText = now.toLocaleTimeString('en-GB');
     }, 1000);
 
-    document.getElementById('fileInput').addEventListener('change', function(e) {
+    document.getElementById('fileInput').addEventListener('change', async function(e) {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
 
-        // ڕیزکردن و زیادکردن بۆ لیستە نەک سڕینەوە
-        const newItems = files.map(file => ({
-            name: file.name.replace(/\.[^/.]+$/, ""),
-            url: URL.createObjectURL(file),
-            duration: 0 // دواتر پڕ دەکرێتەوە
-        }));
+        const newItems = [];
+        for (let file of files) {
+            const url = URL.createObjectURL(file);
+            const duration = await getVideoDuration(url);
+            newItems.push({
+                id: Date.now() + Math.random(),
+                name: file.name.replace(/\.[^/.]+$/, ""),
+                url: url,
+                duration: duration
+            });
+        }
 
         playlist = [...playlist, ...newItems];
-        updateDurationsAndRender();
-    });
-
-    async function updateDurationsAndRender() {
-        for (let item of playlist) {
-            if (item.duration === 0) {
-                item.duration = await getVideoDuration(item.url);
-            }
-        }
         renderList();
-        if (video.paused && !video.src && playlist.length > 0) playVideo(0);
-    }
+        
+        // تەنها ئەگەر پلەیەرەکە وەستابوو، دەست پێ بکە
+        if (video.paused && !video.src && playlist.length > 0) {
+            playVideo(0);
+        }
+    });
 
     function getVideoDuration(url) {
         return new Promise(resolve => {
@@ -111,6 +122,11 @@
     }
 
     function renderList() {
+        if (playlist.length === 0) {
+            listContainer.innerHTML = '<div class="empty-msg">هیچ ڤیدیۆیەک لە لیستدا نییە</div>';
+            return;
+        }
+
         let startTime = new Date();
         listContainer.innerHTML = playlist.map((vid, i) => {
             const startStr = startTime.toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit'});
@@ -118,43 +134,56 @@
             const endStr = endTime.toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit'});
             
             const html = `
-                <div class="item ${video.dataset.currentIndex == i ? 'active' : ''}" onclick="playVideo(${i})">
-                    <div class="name">${vid.name}</div>
-                    <div class="time-info">
-                        <span>دەستپێک: ${startStr}</span>
-                        <span>کۆتایی: ${endStr}</span>
+                <div class="item ${currentIndex === i ? 'active' : ''}">
+                    <button class="del-btn" onclick="deleteVideo(${i})">لادان</button>
+                    <div class="item-content" ondblclick="playVideo(${i})" title="بۆ گۆڕینی کتوپڕ دوو کلیک بکە">
+                        <div class="name">${vid.name}</div>
+                        <div class="time-info">
+                            <span>دەستپێک: ${startStr}</span>
+                            <span>کۆتایی: ${endStr}</span>
+                        </div>
                     </div>
                 </div>
             `;
-            startTime = endTime; // بۆ ڤیدیۆی دواتر
+            startTime = endTime;
             return html;
         }).join('');
     }
 
     function playVideo(index) {
-        if (index >= playlist.length) return;
+        if (index < 0 || index >= playlist.length) return;
         
-        video.dataset.currentIndex = index;
+        currentIndex = index;
         video.src = playlist[index].url;
         video.play();
         currentInfo.innerText = "ئێستا: " + playlist[index].name;
         renderList();
     }
 
+    function deleteVideo(index) {
+        // ئەگەر ئەو ڤیدیۆیە بێت کە ئێستا لێ دەدرێت
+        if (index === currentIndex) {
+            alert("ناتوانیت ئەو ڤیدیۆیە لایبەیت کە ئێستا پەخش دەکرێت!");
+            return;
+        }
+        
+        playlist.splice(index, 1);
+        
+        // ڕێکخستنەوەی Index ئەگەر ڤیدیۆکانی پێش خۆی سڕدرابێتەوە
+        if (index < currentIndex) {
+            currentIndex--;
+        }
+        
+        renderList();
+    }
+
     video.onended = () => {
-        let next = parseInt(video.dataset.currentIndex) + 1;
-        if (next < playlist.length) {
-            playVideo(next);
+        if (currentIndex + 1 < playlist.length) {
+            playVideo(currentIndex + 1);
         } else {
-            currentInfo.innerText = "هەموو ڤیدیۆکان تەواو بوون";
+            currentInfo.innerText = "پەخش تەواو بوو";
         }
     };
-
-    function formatTime(s) {
-        const h = Math.floor(s / 3600);
-        const m = Math.floor((s % 3600) / 60);
-        return `${h>0?h+':':''}${m<10?'0'+m:m}:${Math.floor(s%60)<10?'0'+Math.floor(s%60):Math.floor(s%60)}`;
-    }
 </script>
 </body>
 </html>

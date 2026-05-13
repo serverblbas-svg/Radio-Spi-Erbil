@@ -2,198 +2,100 @@
 <html lang="ku" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TILIVIZO QURAN BOSS PRO 🌙</title>
+    <title>پەخشی خەتمی قورئانی پیرۆز 🌙</title>
     <style>
-        :root { --primary: #1b4332; --accent: #d4af37; --bg: #050a08; --danger: #e63946; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-
-        header { height: 65px; background: #000; border-bottom: 2px solid var(--accent); display: flex; align-items: center; padding: 0 20px; justify-content: space-between; }
-        .on-air { background: var(--danger); color: #fff; padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; animation: blink 1.5s infinite; }
-        @keyframes blink { 0% {opacity: 1;} 50% {opacity: 0.4;} 100% {opacity: 1;} }
-
-        .main { flex: 1; display: flex; overflow: hidden; }
-
-        /* Player Section */
-        .player-section { flex: 1; display: flex; flex-direction: column; background: #000; }
-        .status-bar { height: 55px; background: #111; display: flex; align-items: center; padding: 0 20px; justify-content: space-between; font-size: 0.85rem; border-bottom: 1px solid #222; }
-        .next-info { color: var(--accent); font-weight: bold; font-size: 0.8rem; }
+        :root { --primary: #1b4332; --accent: #d4af37; --bg: #000; }
+        body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
-        .video-box { flex: 1; position: relative; background: #000; display: flex; align-items: center; justify-content: center; }
-        video { width: 100%; height: 100%; object-fit: contain; }
-
-        /* Sidebar - Playlist */
-        .sidebar { width: 450px; background: #0a0a0a; border-right: 1px solid var(--accent); display: flex; flex-direction: column; }
-        .toolbar { padding: 15px; background: #111; border-bottom: 1px solid #222; }
-        .btn-add { display: block; background: var(--accent); color: #000; padding: 12px; border-radius: 6px; text-align: center; cursor: pointer; font-weight: bold; font-size: 0.85rem; transition: 0.3s; }
-        .btn-add:hover { background: #fff; }
-
-        .list-header { display: flex; padding: 12px 10px; background: #1a1a1a; font-size: 0.75rem; color: #888; border-bottom: 1px solid #333; font-weight: bold; }
-        .list-container { flex: 1; overflow-y: auto; position: relative; }
+        .sidebar { width: 380px; background: #0a0a0a; border-right: 1px solid var(--accent); display: flex; flex-direction: column; }
+        .header-box { padding: 20px; background: var(--primary); text-align: center; border-bottom: 2px solid var(--accent); }
+        .list-container { flex: 1; overflow-y: auto; padding: 10px; }
         
-        .item { 
-            display: flex; align-items: center; padding: 12px 10px; border-bottom: 1px solid #1a1a1a;
-            position: relative; font-size: 0.8rem; transition: 0.2s;
+        .item { padding: 15px; background: #111; margin-bottom: 8px; border-radius: 8px; cursor: pointer; border-right: 4px solid transparent; font-size: 0.9rem; }
+        .item.active { background: var(--accent); color: #000; font-weight: bold; border-right-color: #fff; }
+
+        .player-side { flex: 1; display: flex; flex-direction: column; background: #000; position: relative; }
+        video#mainVideo { width: 100%; height: 100%; object-fit: contain; }
+
+        /* لۆجۆی کەناڵ وەک ڤیدیۆ بەبێ ڕەنگی سەوز */
+        .channel-logo-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 150px; /* قەبارەی لۆگۆکە */
+            height: auto;
+            z-index: 100;
+            pointer-events: none;
         }
-        .item:hover { background: #151515; }
-        .item.active { background: rgba(212, 175, 55, 0.15); color: var(--accent); border-right: 4px solid var(--accent); }
         
-        .col-id { width: 30px; opacity: 0.5; font-family: monospace; }
-        .col-main { flex: 1; padding-right: 10px; cursor: pointer; overflow: hidden; }
-        .col-main .v-name { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
-        .col-main .v-time { font-size: 0.7rem; opacity: 0.7; }
-        .btn-del { color: #555; background: none; border: none; cursor: pointer; padding: 5px 10px; font-size: 1.1rem; transition: 0.3s; }
-        .btn-del:hover { color: var(--danger); transform: scale(1.2); }
+        video#logoVideo {
+            width: 100%;
+            height: auto;
+            /* لادانی ڕەنگی سەوزی لۆگۆکە */
+            mix-blend-mode: screen; 
+            filter: brightness(1.2) contrast(1.1);
+        }
 
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+        .video-info { position: absolute; top: 20px; right: 20px; background: rgba(27, 67, 50, 0.9); padding: 10px 20px; border-radius: 8px; border-right: 4px solid var(--accent); z-index: 10; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
-<header>
-    <div style="display:flex; align-items:center; gap:15px;">
-        <div class="on-air">ON AIR</div>
-        <div style="font-weight:bold; font-size:1.3rem; letter-spacing:1px;">TILIVIZO <span style="color:var(--accent)">BOSS</span></div>
+<div class="sidebar">
+    <div class="header-box">
+        <h2 id="clock">00:00:00</h2>
+        <p style="color: var(--accent); font-size: 0.85rem;">پەخشی خەتمی قورئان</p>
     </div>
-    <div id="clock" style="font-family:monospace; font-size:1.3rem; color:var(--accent); text-shadow: 0 0 10px rgba(212,175,55,0.3);">00:00:00</div>
-</header>
+    <div class="list-container" id="playlistItems"></div>
+</div>
 
-<div class="main">
-    <div class="player-section">
-        <div class="status-bar">
-            <div id="nowPlaying">ئێستا: هیچ شتێک پەخش ناکرێت</div>
-            <div class="next-info" id="nextPlaying">دواتر: --:--</div>
-        </div>
-        <div class="video-box">
-            <video id="mainVideo" controls autoplay></video>
-        </div>
+<div class="player-side">
+    <div class="channel-logo-container">
+        <video id="logoVideo" autoplay loop muted playsinline>
+            <source src="https://dso5.raed.net:452/files/111dekanquran.mkv" type="video/mp4">
+        </video>
     </div>
-
-    <div class="sidebar">
-        <div class="toolbar">
-            <label class="btn-add">
-                ➕ زیادکردنی ڤیدیۆکان بۆ پەخش
-                <input type="file" id="fileInput" accept="video/*" multiple style="display:none">
-            </label>
-        </div>
-        
-        <div class="list-header">
-            <div class="col-id">#</div>
-            <div class="col-main">زانیاری سوورەت / ڤیدیۆ</div>
-            <div style="width:50px; text-align:center;">لادان</div>
-        </div>
-
-        <div class="list-container" id="playlistItems">
-            <div style="text-align:center; padding:40px; color:#444; font-size:0.8rem;">خشتەی پەخش چۆڵە...</div>
-        </div>
-    </div>
+    
+    <div class="video-info" id="vInfo">ئێستا: بار دەکرێت...</div>
+    <video id="mainVideo" controls autoplay></video>
 </div>
 
 <script>
+    // تەنها ڤیدیۆکانی قورئان لێرە دابنێ
+    const playlist = [
+        { 
+            name: "📖 سوورەتی بەقەرە - هەیسەم ئەلدوخەین", 
+            url: "https://dso5.raed.net:452/files/%D8%AA%D9%84%D8%A7%D9%88%D8%A9-%D8%B3%D9%88%D8%B1%D8%A9-%D8%A7%D9%84%D8%B4%D9%8A%D8%AE-%D9%87%D9%8A%D8%AB%D9%85-%D8%A7%D9%84%D8%AF%D8%AE%D9%8A%D9%86-%EF%BD%9C-Surah-Al-Baqarah-Recitation.mkv" 
+        }
+    ];
+
     const video = document.getElementById('mainVideo');
-    const playlistContainer = document.getElementById('playlistItems');
-    const clock = document.getElementById('clock');
-    const nowPlayingText = document.getElementById('nowPlaying');
-    const nextPlayingText = document.getElementById('nextPlaying');
+    const container = document.getElementById('playlistItems');
+    const vInfo = document.getElementById('vInfo');
     
-    let playlist = [];
-    let currentIndex = -1;
+    let currentIndex = parseInt(localStorage.getItem('quran_live_index')) || 0;
 
-    // کاتژمێری لایڤ
-    setInterval(() => {
-        clock.innerText = new Date().toLocaleTimeString('en-GB');
-        if (playlist.length > 0) renderPlaylist(false); // نوێکردنەوەی کاتی خشتەکە هەر خولەکێک
-    }, 1000);
-
-    document.getElementById('fileInput').addEventListener('change', async function(e) {
-        const files = Array.from(e.target.files);
-        for (let file of files) {
-            const url = URL.createObjectURL(file);
-            const duration = await getVideoDuration(url);
-            playlist.push({
-                name: file.name.replace(/\.[^/.]+$/, ""),
-                url: url,
-                duration: duration
-            });
-        }
-        renderPlaylist(true);
-        if (video.paused && playlist.length > 0 && currentIndex === -1) playVideo(0);
-    });
-
-    function getVideoDuration(url) {
-        return new Promise(r => {
-            const v = document.createElement('video');
-            v.src = url;
-            v.onloadedmetadata = () => r(v.duration);
-        });
+    function renderList() {
+        container.innerHTML = playlist.map((item, i) => `
+            <div class="item ${currentIndex === i ? 'active' : ''}" onclick="playVideo(${i})">
+                ${item.name}
+            </div>
+        `).join('');
     }
 
-    function renderPlaylist(shouldScroll = false) {
-        if (playlist.length === 0) {
-            playlistContainer.innerHTML = '<div style="text-align:center; padding:40px; color:#444;">خشتەی پەخش چۆڵە...</div>';
-            return;
-        }
-
-        let startTime = new Date();
-        playlistContainer.innerHTML = playlist.map((item, i) => {
-            const startStr = startTime.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
-            const endTime = new Date(startTime.getTime() + item.duration * 1000);
-            const endStr = endTime.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
-            
-            const html = `
-                <div class="item ${currentIndex === i ? 'active' : ''}" id="item-${i}">
-                    <div class="col-id">${i + 1}</div>
-                    <div class="col-main" ondblclick="playVideo(${i})" title="بۆ گۆڕینی کتوپڕ دوو کلیک بکە">
-                        <div class="v-name">${item.name}</div>
-                        <div class="v-time">🕒 دەستپێک: ${startStr} — کۆتایی: ${endStr}</div>
-                    </div>
-                    <button class="btn-del" onclick="removeItem(${i})">&times;</button>
-                </div>
-            `;
-            startTime = endTime;
-            return html;
-        }).join('');
-        
-        updateStatus();
-        if (shouldScroll && currentIndex !== -1) {
-            document.getElementById(`item-${currentIndex}`)?.scrollIntoView({behavior:'smooth', block:'center'});
-        }
+    function playVideo(i) {
+        if (i >= playlist.length) i = 0;
+        currentIndex = i;
+        localStorage.setItem('quran_live_index', i);
+        video.src = playlist[i].url;
+        video.play();
+        vInfo.innerText = "ئێستا: " + playlist[i].name;
+        renderList();
     }
 
-    function playVideo(index) {
-        if (index < 0 || index >= playlist.length) return;
-        currentIndex = index;
-        video.src = playlist[index].url;
-        video.play().catch(e => console.log("Autoplay blocked"));
-        renderPlaylist(true);
-    }
-
-    function updateStatus() {
-        if (currentIndex !== -1 && playlist[currentIndex]) {
-            nowPlayingText.innerText = "📺 ئێستا: " + playlist[currentIndex].name;
-            const next = playlist[currentIndex + 1];
-            nextPlayingText.innerText = next ? "⏭️ دواتر: " + next.name : "⏭️ دواتر: گەڕانەوە بۆ سەرەتا 🔄";
-        }
-    }
-
-    function removeItem(i) {
-        if (i === currentIndex) return alert("ئەم ڤیدیۆیە ئێستا لە پەخشدایە، ناتوانیت لایبەیت!");
-        playlist.splice(i, 1);
-        if (i < currentIndex) currentIndex--;
-        renderPlaylist(false);
-    }
-
-    // لۆژیکی بەردەوامی (Loop)
-    video.onended = () => {
-        if (currentIndex + 1 < playlist.length) {
-            playVideo(currentIndex + 1);
-        } else {
-            // گەڕانەوە بۆ سەرەتا بێ وەستان
-            playVideo(0);
-        }
-    };
+    setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('en-GB'); }, 1000);
+    video.onended = () => { playVideo(currentIndex + 1); };
+    window.onload = () => { if (playlist.length > 0) playVideo(currentIndex); };
 </script>
 </body>
 </html>

@@ -2,17 +2,16 @@
 <html lang="ku">
 <head>
     <meta charset="UTF-8">
-    <title>LIVE QURAN SERVER</title>
+    <title>QURAN LIVE - NO ADS TEST</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
         
-        /* ڤیدیۆی سەرەکی قورئان - هەموو شاشەکە */
-        #mainVideo {
+        /* شاشەی ڤیدیۆی یوتیوب */
+        #player {
             position: absolute;
             top: 0; left: 0;
             width: 100vw; height: 100vh;
-            object-fit: cover; /* یان contain ئەگەر ناتەوێت ببڕێت */
-            z-index: 1;
+            pointer-events: none; /* بۆ ئەوەی ڕیکلامەکان کلیک نەکرێن */
         }
 
         /* لۆگۆ لەسەر شاشە */
@@ -20,90 +19,94 @@
             position: absolute;
             top: 30px;
             left: 30px;
-            width: 180px; /* قەبارەی لۆگۆکە */
+            width: 150px;
             z-index: 100;
             pointer-events: none;
         }
 
         #hiddenLogoVideo { display: none; }
 
-        /* دوگمەی دەنگ بۆ جارێ یەکەم */
-        #unmuteBtn {
+        .overlay {
             position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 20px 40px;
-            background: #d4af37;
-            border: none;
-            font-weight: bold;
-            cursor: pointer;
-            z-index: 1000;
-            border-radius: 10px;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 10;
+            background: transparent;
         }
     </style>
 </head>
 <body>
 
-    <button id="unmuteBtn" onclick="startBroadcast()">کرتە بکە بۆ دەستپێکردنی پەخش (Unmute)</button>
+    <div class="overlay"></div>
+    <div id="player"></div>
 
     <canvas id="logoCanvas"></canvas>
-    
-    <video id="hiddenLogoVideo" crossorigin="anonymous" autoplay loop muted playsinline>
+    <video id="hiddenLogoVideo" autoplay loop muted playsinline>
         <source src="https://dso5.raed.net:452/files/111dekanquran.mkv" type="video/mp4">
     </video>
 
-    <video id="mainVideo" crossorigin="anonymous" autoplay loop playsinline>
-        <source src="https://dso5.raed.net:452/files/%D8%AA%D9%84%D8%A7%D9%88%D8%A9-%D8%B3%D9%88%D8%B1%D8%A9-%D8%A7%D9%84%D8%A8%D9%82%D8%B1%D8%A9-%D8%A8%D8%B5%D9%88%D8%AA-%D8%A7%D9%84%D9%8ق%D8%A7%D8%B1%D8%A6-%D8%A7%D9%84%D8%B4%D9%8A%D8%AE-%D9%87%D9%8A%D8%AB%D9%85-%D8%A7%D9%84%D8%AF%D8%AE%D9%8A%D9%86-%EF%BD%9C-Surah-Al-Baqarah-Recitation.mkv" type="video/mp4">
-    </video>
+    <script>
+        // بارکردنی API یوتیوب
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-<script>
-    const mainVideo = document.getElementById('mainVideo');
-    const logoVideo = document.getElementById('hiddenLogoVideo');
-    const canvas = document.getElementById('logoCanvas');
-    const ctx = canvas.getContext('2d');
-    const unmuteBtn = document.getElementById('unmuteBtn');
-
-    function startBroadcast() {
-        mainVideo.muted = false;
-        mainVideo.play();
-        logoVideo.play();
-        unmuteBtn.style.display = 'none';
-    }
-
-    // لۆژیکی بڕینی ڕەنگی سەوزی لۆگۆکە
-    function processChromaKey() {
-        if (!logoVideo.paused && !logoVideo.ended) {
-            ctx.drawImage(logoVideo, 0, 0, canvas.width, canvas.height);
-            let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            let length = frame.data.length / 4;
-
-            for (let i = 0; i < length; i++) {
-                let r = frame.data[i * 4 + 0];
-                let g = frame.data[i * 4 + 1];
-                let b = frame.data[i * 4 + 2];
-
-                // بڕینی ڕەنگی سەوز (Chroma Key)
-                if (g > 80 && g > r * 1.1 && g > b * 1.1) {
-                    frame.data[i * 4 + 3] = 0; // شەفافکردنی ڕەنگە سەوزەکە
+        var player;
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '100%',
+                width: '100%',
+                videoId: '0tOZdUgmv_I', // ئایدی ڤیدیۆی قورئانەکە
+                playerVars: {
+                    'autoplay': 1,
+                    'controls': 0, // شاردنەوەی دوگمەکانی یوتیوب
+                    'rel': 0,
+                    'showinfo': 0,
+                    'modestbranding': 1,
+                    'loop': 1,
+                    'playlist': '0tOZdUgmv_I' // پێویستە بۆ دووبارەبوونەوە
+                },
+                events: {
+                    'onReady': onPlayerReady
                 }
-            }
-            ctx.putImageData(frame, 0, 0);
+            });
         }
-        requestAnimationFrame(processChromaKey);
-    }
 
-    logoVideo.addEventListener('play', () => {
-        canvas.width = logoVideo.videoWidth;
-        canvas.height = logoVideo.videoHeight;
-        processChromaKey();
-    });
+        function onPlayerReady(event) {
+            event.target.playVideo();
+            event.target.mute(); // زۆربەی برۆسەرەکان پێویستیان بە بێدەنگییە بۆ ئەوەی ئۆتۆماتیک دەست پێ بکات
+        }
 
-    // ئەگەر سێرڤەرەکە ڕێگەی دا بەبێ دەنگ لێی بدات
-    window.onload = () => {
-        mainVideo.play().catch(() => {
-            console.log("پێویستە کلیک لە دوگمەکە بکەیت بۆ دەنگ");
+        // لۆژیکی بڕینی ڕەنگی سەوزی لۆگۆکە
+        const logoVideo = document.getElementById('hiddenLogoVideo');
+        const canvas = document.getElementById('logoCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function processChromaKey() {
+            if (!logoVideo.paused && !logoVideo.ended) {
+                ctx.drawImage(logoVideo, 0, 0, canvas.width, canvas.height);
+                let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                let length = frame.data.length / 4;
+
+                for (let i = 0; i < length; i++) {
+                    let r = frame.data[i * 4 + 0];
+                    let g = frame.data[i * 4 + 1];
+                    let b = frame.data[i * 4 + 2];
+                    if (g > 80 && g > r * 1.1 && g > b * 1.1) {
+                        frame.data[i * 4 + 3] = 0;
+                    }
+                }
+                ctx.putImageData(frame, 0, 0);
+            }
+            requestAnimationFrame(processChromaKey);
+        }
+
+        logoVideo.addEventListener('play', () => {
+            canvas.width = 300; // قەبارەی ڕوونی لۆگۆکە
+            canvas.height = 300;
+            processChromaKey();
         });
-    };
-</script>
+    </script>
 </body>
 </html>

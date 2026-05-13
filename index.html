@@ -1,132 +1,109 @@
 <!DOCTYPE html>
-<html lang="ku" dir="rtl">
+<html lang="ku">
 <head>
     <meta charset="UTF-8">
-    <title>Pexşî Quran iStar 🌙</title>
+    <title>LIVE QURAN SERVER</title>
     <style>
-        :root { --primary: #1b4332; --accent: #d4af37; --bg: #000; }
-        body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
         
-        .main-wrapper { display: flex; height: 100vh; }
-        .sidebar { width: 350px; background: #0a0a0a; border-left: 1px solid var(--accent); display: flex; flex-direction: column; }
-        .player-side { flex: 1; background: #000; position: relative; }
+        /* ڤیدیۆی سەرەکی قورئان - هەموو شاشەکە */
+        #mainVideo {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            object-fit: cover; /* یان contain ئەگەر ناتەوێت ببڕێت */
+            z-index: 1;
+        }
 
-        video#mainVideo { width: 100%; height: 100%; background: #000; }
-
-        /* لۆگۆ بە شێوەی شەفاف */
+        /* لۆگۆ لەسەر شاشە */
         #logoCanvas {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 150px;
+            top: 30px;
+            left: 30px;
+            width: 180px; /* قەبارەی لۆگۆکە */
             z-index: 100;
             pointer-events: none;
         }
 
-        /* حەشارکردنی ڤیدیۆ ئەسڵییەکە */
         #hiddenLogoVideo { display: none; }
 
-        .item { padding: 15px; background: #111; margin: 5px; border-radius: 5px; cursor: pointer; font-size: 0.85rem; border-right: 3px solid transparent; }
-        .item.active { background: var(--accent); color: #000; border-right-color: #fff; }
-        
+        /* دوگمەی دەنگ بۆ جارێ یەکەم */
         #unmuteBtn {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: var(--accent);
-            color: #000;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            background: #d4af37;
             border: none;
-            padding: 10px 20px;
             font-weight: bold;
-            border-radius: 5px;
             cursor: pointer;
-            z-index: 200;
+            z-index: 1000;
+            border-radius: 10px;
         }
     </style>
 </head>
 <body>
 
-<div class="main-wrapper">
-    <div class="player-side">
-        <button id="unmuteBtn" onclick="unmute()">🔊 دەنگ چالاک بکە</button>
-        
-        <canvas id="logoCanvas"></canvas>
-        <video id="hiddenLogoVideo" autoplay loop muted playsinline>
-            <source src="https://dso5.raed.net:452/files/111dekanquran.mkv" type="video/mp4">
-        </video>
+    <button id="unmuteBtn" onclick="startBroadcast()">کرتە بکە بۆ دەستپێکردنی پەخش (Unmute)</button>
 
-        <video id="mainVideo" autoplay playsinline></video>
-    </div>
+    <canvas id="logoCanvas"></canvas>
+    
+    <video id="hiddenLogoVideo" crossorigin="anonymous" autoplay loop muted playsinline>
+        <source src="https://dso5.raed.net:452/files/111dekanquran.mkv" type="video/mp4">
+    </video>
 
-    <div class="sidebar">
-        <div style="padding: 20px; background: var(--primary); text-align: center;">
-            <h2 id="clock">00:00:00</h2>
-        </div>
-        <div id="playlistItems" style="flex: 1; overflow-y: auto; padding: 10px;"></div>
-    </div>
-</div>
+    <video id="mainVideo" crossorigin="anonymous" autoplay loop playsinline>
+        <source src="https://dso5.raed.net:452/files/%D8%AA%D9%84%D8%A7%D9%88%D8%A9-%D8%B3%D9%88%D8%B1%D8%A9-%D8%A7%D9%84%D8%A8%D9%82%D8%B1%D8%A9-%D8%A8%D8%B5%D9%88%D8%AA-%D8%A7%D9%84%D9%8ق%D8%A7%D8%B1%D8%A6-%D8%A7%D9%84%D8%B4%D9%8A%D8%AE-%D9%87%D9%8A%D8%AB%D9%85-%D8%A7%D9%84%D8%AF%D8%AE%D9%8A%D9%86-%EF%BD%9C-Surah-Al-Baqarah-Recitation.mkv" type="video/mp4">
+    </video>
 
 <script>
-    const playlist = [
-        { 
-            name: "📖 سوورەتی بەقەرە - هەیسەم ئەلدوخەین", 
-            url: "https://dso5.raed.net:452/files/%D8%AA%D9%84%D8%A7%D9%88%D8%A9-%D8%B3%D9%88%D8%B1%D8%A9-%D8%A7%D9%8لش%D9%8A%D8%AE-%D9%87%D9%8A%D8%AB%D9%85-%D8%A7%D9%8ل%D8%AF%D8%AE%D9%8A%D9%86-%EF%BD%9C-Surah-Al-Baqarah-Recitation.mkv" 
-        }
-    ];
-
     const mainVideo = document.getElementById('mainVideo');
     const logoVideo = document.getElementById('hiddenLogoVideo');
     const canvas = document.getElementById('logoCanvas');
     const ctx = canvas.getContext('2d');
+    const unmuteBtn = document.getElementById('unmuteBtn');
 
-    // لۆژیکی لادانی ڕەنگی سەوز (Chroma Key)
-    function computeFrame() {
-        if (logoVideo.paused || logoVideo.ended) return;
-        ctx.drawImage(logoVideo, 0, 0, canvas.width, canvas.height);
-        let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        let l = frame.data.length / 4;
+    function startBroadcast() {
+        mainVideo.muted = false;
+        mainVideo.play();
+        logoVideo.play();
+        unmuteBtn.style.display = 'none';
+    }
 
-        for (let i = 0; i < l; i++) {
-            let r = frame.data[i * 4 + 0];
-            let g = frame.data[i * 4 + 1];
-            let b = frame.data[i * 4 + 2];
-            // ئەگەر ڕەنگەکە سەوز بوو، بیکە بە شەفاف
-            if (g > 100 && g > r * 1.2 && g > b * 1.2) {
-                frame.data[i * 4 + 3] = 0;
+    // لۆژیکی بڕینی ڕەنگی سەوزی لۆگۆکە
+    function processChromaKey() {
+        if (!logoVideo.paused && !logoVideo.ended) {
+            ctx.drawImage(logoVideo, 0, 0, canvas.width, canvas.height);
+            let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let length = frame.data.length / 4;
+
+            for (let i = 0; i < length; i++) {
+                let r = frame.data[i * 4 + 0];
+                let g = frame.data[i * 4 + 1];
+                let b = frame.data[i * 4 + 2];
+
+                // بڕینی ڕەنگی سەوز (Chroma Key)
+                if (g > 80 && g > r * 1.1 && g > b * 1.1) {
+                    frame.data[i * 4 + 3] = 0; // شەفافکردنی ڕەنگە سەوزەکە
+                }
             }
+            ctx.putImageData(frame, 0, 0);
         }
-        ctx.putImageData(frame, 0, 0);
-        requestAnimationFrame(computeFrame);
+        requestAnimationFrame(processChromaKey);
     }
 
     logoVideo.addEventListener('play', () => {
-        canvas.width = logoVideo.videoWidth / 4;
-        canvas.height = logoVideo.videoHeight / 4;
-        computeFrame();
-    }, false);
+        canvas.width = logoVideo.videoWidth;
+        canvas.height = logoVideo.videoHeight;
+        processChromaKey();
+    });
 
-    function playVideo(i) {
-        mainVideo.src = playlist[i].url;
-        mainVideo.muted = true; // بۆ ئەوەی سێرڤەر ڕێگری لێنەکات
-        mainVideo.play();
-        renderList(i);
-    }
-
-    function unmute() {
-        mainVideo.muted = false;
-        document.getElementById('unmuteBtn').style.display = 'none';
-    }
-
-    function renderList(current) {
-        document.getElementById('playlistItems').innerHTML = playlist.map((item, i) => `
-            <div class="item ${current === i ? 'active' : ''}" onclick="playVideo(${i})">
-                ${item.name}
-            </div>
-        `).join('');
-    }
-
-    setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('en-GB'); }, 1000);
-    window.onload = () => playVideo(0);
+    // ئەگەر سێرڤەرەکە ڕێگەی دا بەبێ دەنگ لێی بدات
+    window.onload = () => {
+        mainVideo.play().catch(() => {
+            console.log("پێویستە کلیک لە دوگمەکە بکەیت بۆ دەنگ");
+        });
+    };
 </script>
 </body>
 </html>

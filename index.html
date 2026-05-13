@@ -1,158 +1,103 @@
-<!DOCTYPE html>
-<html lang="ku" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TILIVIZO ULTRA - 10K Channels</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <style>
-        :root { --accent: #f0b90b; --bg: #050505; --card: #111; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: var(--bg); color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        header { height: 50px; background: #000; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid #222; }
-        .logo { font-weight: bold; color: var(--accent); font-size: 1.2rem; }
-
-        .main { flex: 1; display: flex; overflow: hidden; }
-        
-        /* پلەیەر */
-        .player-container { flex: 1; background: #000; position: relative; display: flex; align-items: center; justify-content: center; }
-        video { width: 100%; height: 100%; background: #000; }
-
-        /* لای ڕاست - لیستی کەناڵەکان */
-        .sidebar { width: 350px; background: #0a0a0a; display: flex; flex-direction: column; border-right: 1px solid #222; }
-        
-        /* گەڕان و فلتەر */
-        .search-box { padding: 10px; background: #111; border-bottom: 1px solid #222; }
-        input { width: 100%; padding: 10px; background: #000; border: 1px solid #333; color: white; border-radius: 5px; outline: none; }
-
-        .groups { padding: 10px; display: flex; gap: 8px; overflow-x: auto; background: #0a0a0a; border-bottom: 1px solid #222; }
-        .btn-g { padding: 6px 15px; background: #222; border-radius: 20px; cursor: pointer; font-size: 0.8rem; white-space: nowrap; transition: 0.2s; }
-        .btn-g.active { background: var(--accent); color: black; font-weight: bold; }
-
-        /* بەشی لیستی خێرا */
-        .list-container { flex: 1; overflow-y: auto; padding: 10px; scrollbar-width: thin; scrollbar-color: var(--accent) #000; }
-        .item { display: flex; align-items: center; padding: 10px; gap: 12px; margin-bottom: 8px; background: #111; border-radius: 8px; cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
-        .item:hover { background: #1a1a1a; border-color: #333; }
-        .item.active { border-color: var(--accent); background: rgba(240, 185, 11, 0.1); }
-        .item img { width: 40px; height: 40px; object-fit: contain; background: #fff; border-radius: 5px; }
-        .item h4 { font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
-    </style>
-</head>
-<body>
-
-<header>
-    <div class="logo">TILIVIZO ULTRA 🚀</div>
-</header>
-
-<div class="main">
-    <div class="player-container">
-        <video id="videoPlayer" controls autoplay></video>
-    </div>
-
-    <div class="sidebar">
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="بگەڕێ بۆ کەناڵ..." oninput="filterChannels()">
-        </div>
-        <div class="groups" id="groupList"></div>
-        <div class="list-container" id="channelList">
-            </div>
-    </div>
-</div>
-
 <script>
-    let allChannels = [];
-    let currentFilter = "هەمووی";
     const video = document.getElementById('videoPlayer');
     let hls = new Hls();
+    let allChannels = [];
+    let filteredChannels = [];
 
-    // ١. خوێندنەوەی فایلی M3U (ئەو فایلەی G:\... پاشەکەوتی کردووە)
-    async function loadM3U() {
-        // تێبینی: لێرەدا دەبێت ناوی فایلەکەت دابنێیت
-        const filePath = 'Kanal_Karakan.m3u'; 
+    const M3U_URL = 'https://xtream-ie.net/get.php?username=iptv2026&password=iptv2026&type=m3u_plus';
+
+    async function loadFromURL() {
+        // ... (هەمان کۆدی پێشووت بۆ UI)
         try {
-            const res = await fetch(filePath);
-            const data = await res.text();
+            const response = await fetch(M3U_URL);
+            const data = await response.text();
             parseM3U(data);
-        } catch (e) { console.error("فایلەکە نەدۆزرایەوە"); }
+            document.getElementById('loadingMsg').classList.add('hidden');
+        } catch (err) {
+            document.getElementById('loadingMsg').classList.add('hidden');
+            document.getElementById('currentChannel').innerText = '❌ CORS Error - فایلی ناوخۆیی بەکاربهێنە';
+        }
     }
 
-    function parseM3U(data) {
-        const lines = data.split('\n');
-        allChannels = [];
-        let currentItem = null;
+    function readFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            parseM3U(e.target.result);
+            document.getElementById('uploadArea').classList.add('hidden');
+        };
+        reader.readAsText(file);
+    }
 
-        lines.forEach(line => {
+    function parseM3U(content) {
+        const lines = content.split('\n');
+        allChannels = [];
+        let currentCh = null;
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
             if (line.startsWith('#EXTINF:')) {
-                const name = line.split(',')[1] || "کەناڵ";
+                const name = line.split(',')[1] || "کەناڵی بێ ناو";
                 const group = line.match(/group-title="([^"]+)"/i);
                 const logo = line.match(/tvg-logo="([^"]+)"/i);
-                currentItem = {
-                    name: name.trim(),
+                currentCh = {
+                    name: name,
                     group: group ? group[1] : "گشتی",
-                    logo: logo ? logo[1] : "https://via.placeholder.com/40"
+                    logo: logo ? logo[1] : "https://logo.m3uassets.com/a.png"
                 };
-            } else if (line.startsWith('http')) {
-                if (currentItem) {
-                    currentItem.url = line.trim();
-                    allChannels.push(currentItem);
-                    currentItem = null;
-                }
+            } else if (line.startsWith('http') && currentCh) {
+                currentCh.url = line;
+                allChannels.push(currentCh);
+                currentCh = null;
             }
-        });
-
+        }
         renderGroups();
-        displayChannels(allChannels);
+        filteredChannels = allChannels;
+        renderChannels(allChannels.slice(0, 500)); // تەنها ٥٠٠ دانەی سەرەتا نیشان بدە بۆ خێرایی
+        document.getElementById('currentChannel').innerText = `✅ ${allChannels.length} کەناڵ ئامادەیە`;
     }
 
-    function renderGroups() {
-        const gs = ["هەمووی", ...new Set(allChannels.map(c => c.group))];
-        const container = document.getElementById('groupList');
-        container.innerHTML = gs.map(g => `<div class="btn-g ${g===currentFilter?'active':''}" onclick="setGroup('${g}', this)">${g}</div>`).join('');
-    }
-
-    function displayChannels(channels) {
-        const list = document.getElementById('channelList');
-        // بەکارهێنانی Fragment بۆ ئەوەی پڕۆسێسەر ماندوو نەبێت
-        const fragment = document.createDocumentFragment();
+    function renderChannels(list) {
+        const container = document.getElementById('channelList');
+        const fragment = document.createDocumentFragment(); // زۆر گرنگە بۆ خێرایی
         
-        // تەنها ١٠٠ کەناڵی سەرەتا نیشان بدە بۆ ئەوەی "هەنگ" نەکات
-        const initialLoad = channels.slice(0, 100); 
+        container.innerHTML = ''; // پاککردنەوە
 
-        initialLoad.forEach(c => {
-            const div = document.createElement('div');
-            div.className = 'item';
-            div.onclick = () => play(c.url, div);
-            div.innerHTML = `
-                <img src="${c.logo}" onerror="this.src='https://via.placeholder.com/40'">
-                <h4>${c.name}</h4>
+        list.forEach(ch => {
+            const card = document.createElement('div');
+            card.className = 'channel-card';
+            card.onclick = () => playStream(ch.url, ch.name, card);
+            card.innerHTML = `
+                <img src="${ch.logo}" loading="lazy" onerror="this.src='https://logo.m3uassets.com/a.png'">
+                <span>${ch.name}</span>
             `;
-            fragment.appendChild(div);
+            fragment.appendChild(card);
         });
 
-        list.innerHTML = "";
-        list.appendChild(fragment);
+        container.appendChild(fragment);
     }
 
-    function filterChannels() {
-        const query = document.getElementById('searchInput').value.toLowerCase();
-        const filtered = allChannels.filter(c => 
-            (currentFilter === "هەمووی" || c.group === currentFilter) &&
-            c.name.toLowerCase().includes(query)
-        );
-        displayChannels(filtered);
-    }
-
-    function setGroup(g, btn) {
-        currentFilter = g;
-        document.querySelectorAll('.btn-g').forEach(b => b.classList.remove('active'));
+    function filterByGroup(group, btn) {
+        document.querySelectorAll('.group-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        filterChannels();
+        
+        filteredChannels = group === "هەمووی" ? allChannels : allChannels.filter(ch => ch.group === group);
+        renderChannels(filteredChannels.slice(0, 500)); // نیشاندانی ٥٠٠ دانە
     }
 
-    function play(url, el) {
-        document.querySelectorAll('.item').forEach(i => i.classList.remove('active'));
+    document.getElementById('searchBox').oninput = (e) => {
+        const val = e.target.value.toLowerCase();
+        if (val.length < 2) { 
+            renderChannels(filteredChannels.slice(0, 500)); 
+            return; 
+        }
+        const searchResult = filteredChannels.filter(ch => ch.name.toLowerCase().includes(val));
+        renderChannels(searchResult.slice(0, 300));
+    };
+
+    function playStream(url, name, el) {
+        document.querySelectorAll('.channel-card').forEach(c => c.classList.remove('active'));
         el.classList.add('active');
+        document.getElementById('currentChannel').innerText = name;
 
         if (Hls.isSupported()) {
             hls.destroy();
@@ -166,7 +111,5 @@
         }
     }
 
-    loadM3U();
+    loadFromURL();
 </script>
-</body>
-</html>
